@@ -1,4 +1,6 @@
 import type { SVGProps } from "react";
+import type { ChipProps } from "@heroui/chip";
+import { SortDescriptor } from "@heroui/table";
 import React from "react";
 import {
   Table,
@@ -20,12 +22,17 @@ import { Chip } from "@heroui/chip";
 import { User } from "@heroui/user";
 import { Pagination } from "@heroui/pagination";
 import DefaultLayout from "@/layouts/default";
+import { useEffect } from "react";
+import { getAllEmployees } from "@/services/employeeService";
+import type { Employee } from "@/types/employee";
+
 import { Plus, Search, ChevronDown, EllipsisVertical } from "lucide-react";
 
 export type IconSvgProps = SVGProps<SVGSVGElement> & {
   size?: number;
 };
 import { users } from "@/types/dummyData";
+import { toast } from "react-toastify";
 
 export const columns = [
   { name: "ID", uid: "id", sortable: true },
@@ -59,6 +66,11 @@ const INITIAL_VISIBLE_COLUMNS = ["name", "role", "status", "actions"];
 type User = (typeof users)[0];
 
 export default function List() {
+  // api fetched data
+  const [employees, setEmployees] = React.useState<Employee[]>([]);
+  const [loading, setLoading] = React.useState<boolean>(false);
+  const [error, setError] = React.useState<string | null>(null);
+  //
   const [filterValue, setFilterValue] = React.useState("");
   const [selectedKeys, setSelectedKeys] = React.useState<Selection>(
     new Set([])
@@ -77,6 +89,24 @@ export default function List() {
   const pages = Math.ceil(users.length / rowsPerPage);
 
   const hasSearchFilter = Boolean(filterValue);
+
+  // use effect to fetch the data for table
+
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        setLoading(true);
+        const response = await getAllEmployees();
+        setEmployees(response.data);
+        console.log(response.data);
+      } catch (err: any) {
+        toast.error(err.message || "failed to fetch employees");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEmployees();
+  }, []);
 
   const headerColumns = React.useMemo(() => {
     if (visibleColumns === "all") return columns;
@@ -347,6 +377,9 @@ export default function List() {
     }),
     []
   );
+
+  if (loading) return <p>Loading employees...</p>;
+  if (error) return <p>Error: {error}</p>;
 
   return (
     <DefaultLayout>

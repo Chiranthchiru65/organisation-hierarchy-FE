@@ -1,7 +1,7 @@
 import DefaultLayout from "@/layouts/default";
 import { Card, CardHeader, CardBody } from "@heroui/card";
 import { Button } from "@heroui/button";
-import { Plus, Users, Building2, GitBranch, Activity } from "lucide-react";
+import { Plus, Users, GitBranch, Activity } from "lucide-react";
 export default function IndexPage() {
   return (
     <DefaultLayout>
