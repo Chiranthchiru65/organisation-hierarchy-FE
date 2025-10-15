@@ -77,7 +77,7 @@ export default function IndexPage() {
         <div className="flex flex-wrap justify-between items-center">
           <div>
             <h1 className="text-2xl font-semibold text-gray-800">
-              Welcome, John!
+              Welcome, Chiranth!
             </h1>
             <p className="text-gray-500">
               Here’s a high-level overview of your organization.

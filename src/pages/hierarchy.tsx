@@ -1,57 +1,8 @@
 import { useState, useEffect } from "react";
 import Tree from "react-d3-tree";
+import { getHierarchy } from "@/services/employeeService";
 
-const mockHierarchyData = [
-  {
-    _id: "68ef476c6d0454122e08b843",
-    employeeId: "EMP01",
-    name: "eric",
-    email: "eric@gmail.com",
-    position: "CEO",
-    department: "Executive",
-    managerId: "",
-    children: [
-      {
-        _id: "68ef4aca6d0454122e08b854",
-        employeeId: "EMP02",
-        name: "virat",
-        position: "CMO",
-        department: "Executive",
-        managerId: "EMP01",
-        children: [
-          {
-            _id: "68ef4b926d0454122e08b860",
-            employeeId: "EMP04",
-            name: "rohit",
-            position: "head of engineering",
-            department: "engineering",
-            managerId: "EMP02",
-            children: [],
-          },
-          {
-            _id: "68ef4c586d0454122e08b866",
-            employeeId: "EMP05",
-            name: "bhumra",
-            position: "head of design",
-            department: "design",
-            managerId: "EMP02",
-            children: [],
-          },
-        ],
-      },
-      {
-        _id: "68ef4b1f6d0454122e08b85b",
-        employeeId: "EMP03",
-        name: "kohli",
-        position: "CFO",
-        department: "Executive",
-        managerId: "EMP01",
-        children: [],
-      },
-    ],
-  },
-];
-
+// transform data for react-d3-tree
 const transformToD3TreeFormat = (node: any) => ({
   name: node.name,
   attributes: {
@@ -62,18 +13,21 @@ const transformToD3TreeFormat = (node: any) => ({
   children: node.children?.map(transformToD3TreeFormat) || [],
 });
 
+// custom node component
 const CustomNode = ({ nodeDatum }) => (
   <g>
-    <foreignObject width="180" height="80" x="-90" y="-40">
-      <div className="bg-green-50 border-2 border-green-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
-        <div className="text-sm font-semibold text-gray-800 capitalize truncate">
-          {nodeDatum.name}
-        </div>
-        <div className="text-xs text-gray-600 mt-1 capitalize truncate">
-          {nodeDatum.attributes?.position}
-        </div>
-        <div className="text-xs text-green-600 mt-1 font-medium">
-          {nodeDatum.attributes?.department}
+    <foreignObject width="190" height="90" x="-95" y="-45">
+      <div className="w-full h-full flex items-center justify-center p-1">
+        <div className="bg-green-50 border-2 border-green-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow w-full">
+          <div className="text-sm font-semibold text-gray-800 capitalize truncate">
+            {nodeDatum.name}
+          </div>
+          <div className="text-xs text-gray-600 mt-1 capitalize truncate">
+            {nodeDatum.attributes?.position}
+          </div>
+          <div className="text-xs text-green-600 mt-1 font-medium">
+            {nodeDatum.attributes?.department}
+          </div>
         </div>
       </div>
     </foreignObject>
@@ -83,18 +37,20 @@ const CustomNode = ({ nodeDatum }) => (
 export default function HierarchyPage() {
   const [hierarchyData, setHierarchyData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchHierarchyData = async () => {
       try {
         setIsLoading(true);
-
-        setTimeout(() => {
-          setHierarchyData(mockHierarchyData);
-          setIsLoading(false);
-        }, 500);
-      } catch (err) {
-        console.error(err);
+        setError(null);
+        const response = await getHierarchy();
+        setHierarchyData(response.data || []);
+      } catch (err: any) {
+        console.error("Error fetching hierarchy:", err);
+        setError(err.message || "Failed to load hierarchy data");
+      } finally {
         setIsLoading(false);
       }
     };
@@ -103,16 +59,41 @@ export default function HierarchyPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-green-600 text-lg">Loading hierarchy...</div>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-50 to-white">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-green-500 border-t-transparent mb-4"></div>
+          <div className="text-green-600 text-lg font-medium">
+            Loading hierarchy...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-50 to-white">
+        <div className="text-center bg-white p-8 rounded-lg shadow-md border border-red-200">
+          <div className="text-red-600 text-lg font-semibold mb-2">
+            Error Loading Hierarchy
+          </div>
+          <div className="text-gray-600">{error}</div>
+        </div>
       </div>
     );
   }
 
   if (!hierarchyData || hierarchyData.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-gray-600 text-lg">No hierarchy data available</div>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-50 to-white">
+        <div className="text-center bg-white p-8 rounded-lg shadow-md border border-green-200">
+          <div className="text-gray-600 text-lg">
+            No hierarchy data available
+          </div>
+          <div className="text-sm text-gray-500 mt-2">
+            Add employees to see the organization structure
+          </div>
+        </div>
       </div>
     );
   }
@@ -126,44 +107,53 @@ export default function HierarchyPage() {
         <p className="text-gray-600 mb-6">
           Visual representation of organizational structure
         </p>
+
+        {/* tabs */}
+        {hierarchyData.length > 1 && (
+          <div className="flex gap-2 ">
+            {hierarchyData.map((rootNode, idx) => (
+              <button
+                key={rootNode._id}
+                onClick={() => setActiveTab(idx)}
+                className={`px-6 py-2 rounded-lg font-medium transition-all ${
+                  activeTab === idx
+                    ? "bg-green-500 text-white shadow-md"
+                    : "bg-white text-gray-600 hover:bg-green-100 border border-green-200"
+                }`}
+              >
+                {rootNode.name}'s Organization
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      <div className="w-full" style={{ height: "calc(100vh - 140px)" }}>
-        {hierarchyData.map((rootNode, idx) => {
-          const treeData = transformToD3TreeFormat(rootNode);
-
-          return (
-            <div
-              key={rootNode._id}
-              style={{
-                height: hierarchyData.length > 1 ? "50%" : "100%",
-                width: "100%",
-              }}
-            >
-              <Tree
-                data={treeData}
-                orientation="horizontal"
-                pathFunc="step"
-                translate={{ x: 150, y: hierarchyData.length > 1 ? 200 : 400 }}
-                nodeSize={{ x: 200, y: 200 }}
-                separation={{ siblings: 1.5, nonSiblings: 2 }}
-                renderCustomNodeElement={(rd3tProps) => (
-                  <CustomNode {...rd3tProps} />
-                )}
-                pathClassFunc={() => "custom-link"}
-                enableLegacyTransitions
-                transitionDuration={500}
-              />
-              <style>{`
-                .custom-link {
-                  stroke: #3d694d;
-                  stroke-width: 2px;
-                  fill: none;
-                }
-              `}</style>
-            </div>
-          );
-        })}
+      <div className="w-full" style={{ height: "calc(100vh - 180px)" }}>
+        {hierarchyData.length > 0 && (
+          <div style={{ height: "100%", width: "100%" }}>
+            <Tree
+              data={transformToD3TreeFormat(hierarchyData[activeTab])}
+              orientation="horizontal"
+              pathFunc="step"
+              translate={{ x: 150, y: 400 }}
+              nodeSize={{ x: 200, y: 200 }}
+              separation={{ siblings: 1.5, nonSiblings: 2 }}
+              renderCustomNodeElement={(rd3tProps) => (
+                <CustomNode {...rd3tProps} />
+              )}
+              pathClassFunc={() => "custom-link"}
+              enableLegacyTransitions
+              transitionDuration={500}
+            />
+            <style>{`
+              .custom-link {
+                stroke: #519269;
+                stroke-width: 2px;
+                fill: none;
+              }
+            `}</style>
+          </div>
+        )}
       </div>
     </div>
   );
