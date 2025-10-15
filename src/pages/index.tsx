@@ -1,12 +1,80 @@
 import DefaultLayout from "@/layouts/default";
 import { Card, CardHeader, CardBody } from "@heroui/card";
 import { Button } from "@heroui/button";
-import { Plus, Users, GitBranch, Activity } from "lucide-react";
+import { Plus, GitBranch, Activity } from "lucide-react";
+import { addEmployee } from "@/services/employeeService";
+import type { Employee } from "@/types/employee";
+import { useState } from "react";
+import { Form } from "@heroui/form";
+import { toast } from "react-toastify";
+
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  useDisclosure,
+} from "@heroui/modal";
+import { Input } from "@heroui/input";
+
 export default function IndexPage() {
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const [newEmployee, setNewEmployee] = useState<Partial<Employee>>({
+    name: "",
+    email: "",
+    employeeId: "",
+    position: "",
+    department: "",
+    managerId: "",
+    joinDate: "",
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewEmployee({
+      ...newEmployee,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        employeeId: newEmployee.employeeId?.toUpperCase(),
+        name: newEmployee.name,
+        email: newEmployee.email,
+        position: newEmployee.position,
+        department: newEmployee.department,
+        managerId: newEmployee.managerId || null,
+        joinDate: newEmployee.joinDate || new Date().toISOString(),
+      };
+      const res = await addEmployee(payload as Employee);
+
+      if (res.success) {
+        toast.success("Employee added successfully!");
+        onClose();
+        setNewEmployee({
+          name: "",
+          email: "",
+          employeeId: "",
+          position: "",
+          department: "",
+          managerId: "",
+          joinDate: "",
+        });
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add employee");
+    }
+  };
+
+  const handleOpen = () => onOpen();
+
   return (
     <DefaultLayout>
       <div className="flex flex-col gap-6">
-        {/* Header Section */}
         <div className="flex flex-wrap justify-between items-center">
           <div>
             <h1 className="text-2xl font-semibold text-gray-800">
@@ -19,6 +87,7 @@ export default function IndexPage() {
 
           <div className="flex gap-3">
             <Button
+              onPress={handleOpen}
               startContent={<Plus size={16} />}
               color="success"
               variant="solid"
@@ -26,18 +95,10 @@ export default function IndexPage() {
             >
               Add Employee
             </Button>
-            <Button
-              startContent={<Users size={16} />}
-              color="primary"
-              variant="flat"
-              className="font-medium"
-            >
-              Create Team
-            </Button>
           </div>
         </div>
 
-        {/* Stats Section */}
+        {/* stats section */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card shadow="sm" className="hover:shadow-md transition">
             <CardBody className="text-center">
@@ -68,9 +129,8 @@ export default function IndexPage() {
           </Card>
         </div>
 
-        {/* Bottom Section */}
+        {/* bottom section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
-          {/* Organizational Chart Preview */}
           <Card shadow="sm" className="col-span-2">
             <CardHeader className="flex justify-between items-center">
               <h2 className="text-md font-semibold text-gray-700">
@@ -90,7 +150,6 @@ export default function IndexPage() {
             </CardBody>
           </Card>
 
-          {/* Recent Activity */}
           <Card shadow="sm">
             <CardHeader>
               <h2 className="text-md font-semibold text-gray-700">
@@ -105,31 +164,112 @@ export default function IndexPage() {
                 color="green"
                 time="2 hours ago"
               />
-              <ActivityItem
-                name="Bob Williams"
-                action="was promoted to"
-                role="Senior Marketing Manager"
-                color="blue"
-                time="1 day ago"
-              />
-              <ActivityItem
-                name="The Design Team"
-                action="was moved under"
-                role="Product Department"
-                color="yellow"
-                time="3 days ago"
-              />
-              <ActivityItem
-                name="Charlie Brown"
-                action="was hired as"
-                role="UX Designer"
-                color="green"
-                time="5 days ago"
-              />
             </CardBody>
           </Card>
         </div>
       </div>
+
+      {/* add emp modal */}
+      <Modal isOpen={isOpen} size="3xl" onClose={onClose}>
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                Add Employee
+              </ModalHeader>
+              <ModalBody>
+                <Form className="w-full" onSubmit={handleSubmit}>
+                  <div className="flex flex-wrap w-full gap-6">
+                    <Input
+                      name="employeeId"
+                      label="Employee ID"
+                      labelPlacement="outside"
+                      placeholder="e.g. EMP007"
+                      value={newEmployee.employeeId}
+                      onChange={handleChange}
+                      className="w-[45%]"
+                      isRequired
+                    />
+                    <Input
+                      name="name"
+                      label="Full Name"
+                      labelPlacement="outside"
+                      placeholder="Enter name"
+                      value={newEmployee.name}
+                      onChange={handleChange}
+                      className="w-[45%]"
+                      isRequired
+                    />
+                    <Input
+                      name="email"
+                      type="email"
+                      label="Email"
+                      labelPlacement="outside"
+                      placeholder="Enter email"
+                      value={newEmployee.email}
+                      onChange={handleChange}
+                      className="w-[45%]"
+                      isRequired
+                    />
+                    <Input
+                      name="position"
+                      label="Position"
+                      labelPlacement="outside"
+                      placeholder="e.g. SWE, Head of Design"
+                      value={newEmployee.position}
+                      onChange={handleChange}
+                      className="w-[45%]"
+                      isRequired
+                    />
+                    <Input
+                      name="department"
+                      label="Department"
+                      labelPlacement="outside"
+                      placeholder="e.g. Engineering, Design"
+                      value={newEmployee.department}
+                      onChange={handleChange}
+                      className="w-[45%]"
+                      isRequired
+                    />
+                    <Input
+                      name="managerId"
+                      label="Manager ID"
+                      labelPlacement="outside"
+                      placeholder="Enter Manager ID"
+                      value={newEmployee.managerId ?? ""}
+                      onChange={handleChange}
+                      className="w-[45%]"
+                    />
+                    <Input
+                      name="joinDate"
+                      type="date"
+                      label="Joining Date"
+                      labelPlacement="outside"
+                      value={
+                        newEmployee.joinDate
+                          ? newEmployee.joinDate.split("T")[0]
+                          : ""
+                      }
+                      onChange={handleChange}
+                      className="w-[45%]"
+                    />
+                  </div>
+                </Form>
+              </ModalBody>
+              <ModalFooter>
+                <div className="mt-6 flex justify-end gap-3">
+                  <Button color="danger" variant="light" onPress={onClose}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" color="primary">
+                    Submit
+                  </Button>
+                </div>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </DefaultLayout>
   );
 }

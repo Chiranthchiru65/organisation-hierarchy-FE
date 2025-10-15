@@ -46,5 +46,6 @@ export const getSubordinates = async (id: string) => {
 //   Get full hierarchy tree
 export const getHierarchy = async () => {
   const res = await apiClient.get(`${EMPLOYEE_PATH}/hierarchy/tree`);
+  // hierarchy/tree
   return res.data as { success: boolean; data: HierarchyNode[] };
 };
