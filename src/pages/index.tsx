@@ -1,11 +1,12 @@
 import { Card, CardHeader, CardBody } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Plus, GitBranch, Activity } from "lucide-react";
-import { addEmployee } from "@/services/employeeService";
+import { addEmployee, getAllEmployees } from "@/services/employeeService";
 import type { Employee } from "@/types/employee";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Form } from "@heroui/form";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 
 import {
   Modal,
@@ -16,9 +17,14 @@ import {
   useDisclosure,
 } from "@heroui/modal";
 import { Input } from "@heroui/input";
+import StatsCard from "@/components/StatsCard";
+import ActivityItem from "@/components/ActivityItem";
 
 export default function IndexPage() {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [activeManagerCount, setActiveManagerCount] = useState<number>(0);
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const Navigate = useNavigate();
 
   const [newEmployee, setNewEmployee] = useState<Partial<Employee>>({
     name: "",
@@ -29,6 +35,33 @@ export default function IndexPage() {
     managerId: "",
     joinDate: "",
   });
+
+  const stats = [
+    { label: "Total Employees", value: employees.length },
+    { label: "Total Departments", value: "-" },
+    { label: "Active Managers", value: activeManagerCount },
+    { label: "New Hires This Month", value: "-", color: "text-green-600" },
+  ];
+
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        const response = await getAllEmployees();
+        const data = response.data || [];
+        setEmployees(data);
+
+        const managerSet = new Set(
+          data
+            .filter((emp: Employee) => emp.managerId)
+            .map((emp: Employee) => emp.managerId)
+        );
+        setActiveManagerCount(managerSet.size);
+      } catch (err: any) {
+        toast.error(err.message || "Failed to fetch employees");
+      }
+    };
+    fetchEmployees();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewEmployee({
@@ -99,33 +132,14 @@ export default function IndexPage() {
 
         {/* stats section */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card shadow="sm" className="hover:shadow-md transition">
-            <CardBody className="text-center">
-              <p className="text-sm text-gray-500">Total Employees</p>
-              <p className="text-3xl font-semibold text-gray-800 mt-1">1,234</p>
-            </CardBody>
-          </Card>
-
-          <Card shadow="sm" className="hover:shadow-md transition">
-            <CardBody className="text-center">
-              <p className="text-sm text-gray-500">Departments</p>
-              <p className="text-3xl font-semibold text-gray-800 mt-1">15</p>
-            </CardBody>
-          </Card>
-
-          <Card shadow="sm" className="hover:shadow-md transition">
-            <CardBody className="text-center">
-              <p className="text-sm text-gray-500">Avg. Span of Control</p>
-              <p className="text-3xl font-semibold text-gray-800 mt-1">8.2</p>
-            </CardBody>
-          </Card>
-
-          <Card shadow="sm" className="hover:shadow-md transition">
-            <CardBody className="text-center">
-              <p className="text-sm text-gray-500">Open Positions</p>
-              <p className="text-3xl font-semibold text-green-600 mt-1">12</p>
-            </CardBody>
-          </Card>
+          {stats.map((stat, index) => (
+            <StatsCard
+              key={index}
+              label={stat.label}
+              value={stat.value}
+              color={stat.color}
+            />
+          ))}
         </div>
 
         {/* bottom section */}
@@ -133,13 +147,15 @@ export default function IndexPage() {
           <Card shadow="sm" className="col-span-2">
             <CardHeader className="flex justify-between items-center">
               <h2 className="text-md font-semibold text-gray-700">
-                Organizational Chart Preview
+                Organizational Chart Preview{" "}
+                <span className="text-xs">(dummy)</span>
               </h2>
               <Button
                 size="sm"
                 variant="light"
                 color="primary"
                 className="text-sm"
+                onPress={() => Navigate("/hierarchy")}
               >
                 View Full Chart
               </Button>
@@ -148,16 +164,15 @@ export default function IndexPage() {
               <GitBranch size={64} strokeWidth={1.5} />
             </CardBody>
           </Card>
-
           <Card shadow="sm">
             <CardHeader>
               <h2 className="text-md font-semibold text-gray-700">
-                Recent Activity
+                Recent Activity <span className="text-xs">(dummy)</span>
               </h2>
             </CardHeader>
             <CardBody className="space-y-4">
               <ActivityItem
-                name="Alice Johnson"
+                name="Vivek Patni"
                 action="was hired as"
                 role="Software Engineer"
                 color="green"
@@ -270,42 +285,5 @@ export default function IndexPage() {
         </ModalContent>
       </Modal>
     </>
-  );
-}
-
-function ActivityItem({
-  name,
-  action,
-  role,
-  color,
-  time,
-}: {
-  name: string;
-  action: string;
-  role: string;
-  color: string;
-  time: string;
-}) {
-  const colorMap: Record<string, string> = {
-    green: "text-green-600 bg-green-100",
-    blue: "text-blue-600 bg-blue-100",
-    yellow: "text-yellow-600 bg-yellow-100",
-  };
-
-  return (
-    <div className="flex items-start gap-3">
-      <div
-        className={`w-8 h-8 flex items-center justify-center rounded-full ${colorMap[color]}`}
-      >
-        <Activity size={16} />
-      </div>
-      <div className="flex-1">
-        <p className="text-sm text-gray-800">
-          <span className="font-semibold">{name}</span> {action}{" "}
-          <span className="font-medium">{role}</span>.
-        </p>
-        <p className="text-xs text-gray-500 mt-1">{time}</p>
-      </div>
-    </div>
   );
 }

@@ -14,22 +14,6 @@ import { ThemeSwitch } from "@/components/theme-switch";
 import { SearchIcon } from "@/components/icons";
 
 export const Navbar = () => {
-  const searchInput = (
-    <Input
-      aria-label="Search"
-      classNames={{
-        inputWrapper: "bg-default-100",
-        input: "text-sm",
-      }}
-      labelPlacement="outside"
-      placeholder="Search..."
-      startContent={
-        <SearchIcon className="text-base text-default-400 pointer-events-none flex-shrink-0" />
-      }
-      type="search"
-    />
-  );
-
   return (
     <HeroUINavbar
       className="bg-white shadow-xs"
@@ -45,7 +29,19 @@ export const Navbar = () => {
         className="hidden sm:flex basis-1/5 sm:basis-full"
         justify="end"
       >
-        <NavbarItem className="hidden lg:flex">{searchInput}</NavbarItem>
+        <NavbarItem className="hidden lg:flex">
+          {" "}
+          <Input
+            className="!cursor-not-allowed"
+            aria-label="Search"
+            labelPlacement="outside"
+            placeholder="Search..."
+            startContent={
+              <SearchIcon className="text-base text-default-400 pointer-events-none flex-shrink-0" />
+            }
+            type="search"
+          />
+        </NavbarItem>
       </NavbarContent>
 
       {/* mobile nav */}
@@ -55,7 +51,7 @@ export const Navbar = () => {
       </NavbarContent>
 
       <NavbarMenu>
-        {searchInput}
+        {/* {searchInput} */}
         <div className="mx-4 mt-2 flex flex-col gap-2">
           {siteConfig.navMenuItems.map((item, index) => (
             <NavbarMenuItem key={`${item}-${index}`}>
