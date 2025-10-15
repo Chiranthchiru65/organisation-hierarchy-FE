@@ -27,7 +27,7 @@ import {
 } from "@/services/employeeService";
 import type { Employee } from "@/types/employee";
 import { toast } from "react-toastify";
-import { Search, ChevronDown, EllipsisVertical } from "lucide-react";
+import { Search, EllipsisVertical } from "lucide-react";
 import {
   Modal,
   ModalContent,
@@ -58,16 +58,6 @@ export function capitalize(s: string) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "";
 }
 
-const INITIAL_VISIBLE_COLUMNS = [
-  "employeeId",
-  "name",
-  "email",
-  "position",
-  "department",
-  "managerId",
-  "actions",
-];
-
 // component
 
 export default function List() {
@@ -79,11 +69,9 @@ export default function List() {
   // UI state
 
   const [filterValue, setFilterValue] = useState("");
-  const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set([]));
-  const [visibleColumns, setVisibleColumns] = useState<Selection>(
-    new Set(INITIAL_VISIBLE_COLUMNS)
-  );
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  // const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set([]));
+
+  const [rowsPerPage] = useState(10);
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
     column: "name",
     direction: "ascending",
@@ -102,7 +90,7 @@ export default function List() {
     managerId: "",
     joinDate: "",
   });
-  const handleOpen = () => onOpen();
+  // const handleOpen = () => onOpen();
 
   // Fetch Employees
   const fetchEmployees = useCallback(async () => {
@@ -158,7 +146,7 @@ export default function List() {
       if (modalMode === "add") {
         const res = await addEmployee(selectedEmployee as Employee);
         if (res.success) {
-          toast.success("🎉 Employee added successfully!");
+          toast.success("Employee added successfully!");
         }
       } else {
         const res = await updateEmployee(
@@ -166,12 +154,12 @@ export default function List() {
           selectedEmployee
         );
         if (res.success) {
-          toast.success("✅ Employee updated successfully!");
+          toast.success("Employee updated successfully!");
         }
       }
 
       onClose();
-      await fetchEmployees(); // refresh table
+      await fetchEmployees();
     } catch (err: any) {
       toast.error(err.message || "Failed to save employee");
     }
@@ -180,13 +168,6 @@ export default function List() {
   // Table Logic
   const hasSearchFilter = Boolean(filterValue);
   const pages = Math.ceil(employees.length / rowsPerPage);
-
-  const headerColumns = useMemo(() => {
-    if (visibleColumns === "all") return columns;
-    return columns.filter((column) =>
-      Array.from(visibleColumns).includes(column.uid)
-    );
-  }, [visibleColumns]);
 
   // filtering
   const filteredItems = useMemo(() => {
@@ -283,14 +264,6 @@ export default function List() {
 
   // Search + Pagination
 
-  // const onRowsPerPageChange = useCallback(
-  //   (e: React.ChangeEvent<HTMLSelectElement>) => {
-  //     setRowsPerPage(Number(e.target.value));
-  //     setPage(1);
-  //   },
-  //   []
-  // );
-
   const onSearchChange = useCallback((value?: string) => {
     if (value) {
       setFilterValue(value);
@@ -320,31 +293,6 @@ export default function List() {
             onValueChange={onSearchChange}
           />
           <div className="flex gap-3">
-            <Dropdown>
-              <DropdownTrigger className="hidden sm:flex">
-                <Button
-                  endContent={<ChevronDown size={18} className="" />}
-                  size="md"
-                  variant="flat"
-                >
-                  Columns
-                </Button>
-              </DropdownTrigger>
-              <DropdownMenu
-                disallowEmptySelection
-                aria-label="Table Columns"
-                closeOnSelect={false}
-                selectedKeys={visibleColumns}
-                selectionMode="multiple"
-                onSelectionChange={setVisibleColumns}
-              >
-                {columns.map((column) => (
-                  <DropdownItem key={column.uid} className="capitalize">
-                    {capitalize(column.name)}
-                  </DropdownItem>
-                ))}
-              </DropdownMenu>
-            </Dropdown>
             <Button size="md" color="success" onPress={handleOpenAdd}>
               + Add Employee
             </Button>
@@ -354,27 +302,10 @@ export default function List() {
           <span className="text-default-400 text-small">
             Total {employees.length} employees
           </span>
-          {/* <label className="flex items-center text-default-400 text-small">
-            Rows per page:
-            <select
-              className="bg-transparent outline-none text-default-400 text-small"
-              onChange={onRowsPerPageChange}
-            >
-              <option value="5">5</option>
-              <option value="10">10</option>
-              <option value="15">15</option>
-            </select>
-          </label> */}
         </div>
       </div>
     );
-  }, [
-    filterValue,
-    onSearchChange,
-    employees.length,
-    // onRowsPerPageChange,
-    // visibleColumns,
-  ]);
+  }, [filterValue, onSearchChange, employees.length]);
 
   // Table Footer
   const bottomContent = useMemo(() => {
@@ -393,13 +324,13 @@ export default function List() {
           onChange={setPage}
         />
         <span className="text-small text-default-400">
-          {selectedKeys === "all"
+          {/* {selectedKeys === "all"
             ? "All items selected"
-            : `${selectedKeys.size} of ${items.length} selected`}
+            : `${selectedKeys.size} of ${items.length} selected`} */}
         </span>
       </div>
     );
-  }, [selectedKeys, items.length, page, pages, hasSearchFilter]);
+  }, [items.length, page, pages, hasSearchFilter]);
 
   const classNames = useMemo(
     () => ({
@@ -431,15 +362,15 @@ export default function List() {
             },
           }}
           classNames={classNames}
-          selectedKeys={selectedKeys}
+          // selectedKeys={selectedKeys}
           selectionMode="multiple"
           sortDescriptor={sortDescriptor}
           topContent={topContent}
           topContentPlacement="outside"
-          onSelectionChange={setSelectedKeys}
+          // onSelectionChange={setSelectedKeys}
           onSortChange={setSortDescriptor}
         >
-          <TableHeader columns={headerColumns}>
+          <TableHeader columns={columns}>
             {(column) => (
               <TableColumn
                 key={column.uid}
