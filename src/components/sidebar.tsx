@@ -1,10 +1,10 @@
 import {
   Home,
   Briefcase,
-  FileText,
+  // FileText,
   Network,
-  Users,
-  BarChart,
+  // Users,
+  // BarChart,
   Settings,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
@@ -15,9 +15,9 @@ const navItems = [
   { icon: Home, path: "/", label: "Home" },
   { icon: Briefcase, path: "/list", label: "Employees" },
   { icon: Network, path: "/hierarchy", label: "Hierarchy" },
-  { icon: FileText, path: "/reports", label: "Reports" },
-  { icon: Users, path: "/teams", label: "Teams" },
-  { icon: BarChart, path: "/analytics", label: "Analytics" },
+  // { icon: FileText, path: "/reports", label: "Reports" },
+  // { icon: Users, path: "/teams", label: "Teams" },
+  // { icon: BarChart, path: "/analytics", label: "Analytics" },
 ];
 
 export default function Sidebar() {

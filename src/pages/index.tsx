@@ -1,4 +1,3 @@
-import DefaultLayout from "@/layouts/default";
 import { Card, CardHeader, CardBody } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Plus, GitBranch, Activity } from "lucide-react";
@@ -73,7 +72,7 @@ export default function IndexPage() {
   const handleOpen = () => onOpen();
 
   return (
-    <DefaultLayout>
+    <>
       <div className="flex flex-col gap-6">
         <div className="flex flex-wrap justify-between items-center">
           <div>
@@ -270,7 +269,7 @@ export default function IndexPage() {
           )}
         </ModalContent>
       </Modal>
-    </DefaultLayout>
+    </>
   );
 }
 

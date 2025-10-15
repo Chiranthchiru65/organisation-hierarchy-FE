@@ -1,12 +1,9 @@
 import Sidebar from "@/components/sidebar";
 import { Link } from "@heroui/link";
 import { Navbar } from "@/components/navbar";
+import { Outlet } from "react-router-dom";
 
-export default function DefaultLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DefaultLayout({}) {
   return (
     <div className="relative flex h-screen bg-gray-50">
       <Sidebar />
@@ -15,7 +12,8 @@ export default function DefaultLayout({
         <Navbar />
 
         <main className="container mx-auto max-w-7xl px-6 flex-grow pt-4">
-          {children}
+          {/* {children} */}
+          <Outlet />
         </main>
 
         <footer className="w-full flex items-center justify-center py-3">

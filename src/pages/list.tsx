@@ -1,6 +1,7 @@
 import type { SVGProps } from "react";
 import { SortDescriptor } from "@heroui/table";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+
 import {
   Table,
   TableHeader,
@@ -18,19 +19,32 @@ import {
   DropdownItem,
 } from "@heroui/dropdown";
 import { Pagination } from "@heroui/pagination";
-import DefaultLayout from "@/layouts/default";
-import { getAllEmployees } from "@/services/employeeService";
+import {
+  getAllEmployees,
+  updateEmployee,
+  addEmployee,
+  deleteEmployee,
+} from "@/services/employeeService";
 import type { Employee } from "@/types/employee";
 import { toast } from "react-toastify";
-import { Plus, Search, ChevronDown, EllipsisVertical } from "lucide-react";
+import { Search, ChevronDown, EllipsisVertical } from "lucide-react";
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  useDisclosure,
+} from "@heroui/modal";
+import { Form } from "@heroui/form";
 
 export type IconSvgProps = SVGProps<SVGSVGElement> & {
   size?: number;
 };
 
-// Column & Filter Configs
+/* ---------------------------------- Columns ---------------------------------- */
 
-export const columns = [
+const columns = [
   { name: "EMPLOYEE ID", uid: "employeeId", sortable: true },
   { name: "NAME", uid: "name", sortable: true },
   { name: "EMAIL", uid: "email" },
@@ -39,16 +53,6 @@ export const columns = [
   { name: "MANAGER ID", uid: "managerId" },
   { name: "ACTIONS", uid: "actions" },
 ];
-
-export const statusOptions = [
-  { name: "Active", uid: "active" },
-  { name: "Paused", uid: "paused" },
-  { name: "Vacation", uid: "vacation" },
-];
-
-export function capitalize(s: string) {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "";
-}
 
 const INITIAL_VISIBLE_COLUMNS = [
   "employeeId",
@@ -59,15 +63,15 @@ const INITIAL_VISIBLE_COLUMNS = [
   "actions",
 ];
 
-// component
+/* -------------------------------- Component -------------------------------- */
 
 export default function List() {
-  // API data
+  // ------------------- Data -------------------
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // UI state
+  // ------------------- UI State -------------------
   const [filterValue, setFilterValue] = useState("");
   const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set([]));
   const [visibleColumns, setVisibleColumns] = useState<Selection>(
@@ -80,30 +84,98 @@ export default function List() {
   });
   const [page, setPage] = useState(1);
 
-  const hasSearchFilter = Boolean(filterValue);
+  // ------------------- Modal State -------------------
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [modalMode, setModalMode] = useState<"add" | "edit">("add");
+  const [selectedEmployee, setSelectedEmployee] = useState<Partial<Employee>>({
+    employeeId: "",
+    name: "",
+    email: "",
+    position: "",
+    department: "",
+    managerId: "",
+    joinDate: "",
+  });
 
-  // Fetch Employees
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        setLoading(true);
-        const response = await getAllEmployees();
-        setEmployees(response.data || []);
-      } catch (err: any) {
-        toast.error(err.message || "Failed to fetch employees");
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchEmployees();
+  /* ------------------ Fetch Employees ------------------ */
+  const fetchEmployees = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await getAllEmployees();
+      setEmployees(response.data || []);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to fetch employees");
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Table Logic
+  useEffect(() => {
+    fetchEmployees();
+  }, [fetchEmployees]);
 
+  /* ------------------ Modal Helpers ------------------ */
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedEmployee({
+      ...selectedEmployee,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleOpenAdd = () => {
+    setModalMode("add");
+    setSelectedEmployee({
+      employeeId: "",
+      name: "",
+      email: "",
+      position: "",
+      department: "",
+      managerId: "",
+      joinDate: "",
+    });
+    onOpen();
+  };
+
+  const handleOpenEdit = (employee: Employee) => {
+    setModalMode("edit");
+    setSelectedEmployee(employee);
+    onOpen();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      if (modalMode === "add") {
+        const res = await addEmployee(selectedEmployee as Employee);
+        if (res.success) {
+          toast.success("🎉 Employee added successfully!");
+        }
+      } else {
+        const res = await updateEmployee(
+          selectedEmployee.employeeId!,
+          selectedEmployee
+        );
+        if (res.success) {
+          toast.success("✅ Employee updated successfully!");
+        }
+      }
+
+      onClose();
+      await fetchEmployees(); // refresh table
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save employee");
+    }
+  };
+
+  /* ------------------ Table Computations ------------------ */
+
+  const hasSearchFilter = Boolean(filterValue);
   const pages = Math.ceil(employees.length / rowsPerPage);
 
-  const headerColumns = React.useMemo(() => {
+  const headerColumns = useMemo(() => {
     if (visibleColumns === "all") return columns;
     return columns.filter((column) =>
       Array.from(visibleColumns).includes(column.uid)
@@ -111,7 +183,7 @@ export default function List() {
   }, [visibleColumns]);
 
   // 🔍 Filtering
-  const filteredItems = React.useMemo(() => {
+  const filteredItems = useMemo(() => {
     let filtered = [...employees];
     if (hasSearchFilter) {
       filtered = filtered.filter((emp) =>
@@ -122,14 +194,14 @@ export default function List() {
   }, [employees, filterValue]);
 
   // pagination
-  const items = React.useMemo(() => {
+  const items = useMemo(() => {
     const start = (page - 1) * rowsPerPage;
     const end = start + rowsPerPage;
     return filteredItems.slice(start, end);
   }, [page, filteredItems, rowsPerPage]);
 
   // sorting
-  const sortedItems = React.useMemo(() => {
+  const sortedItems = useMemo(() => {
     return [...items].sort((a, b) => {
       const first = a[sortDescriptor.column as keyof Employee] ?? "";
       const second = b[sortDescriptor.column as keyof Employee] ?? "";
@@ -138,8 +210,9 @@ export default function List() {
     });
   }, [sortDescriptor, items]);
 
-  // render cells
-  const renderCell = React.useCallback(
+  /* ------------------ Table Rendering ------------------ */
+
+  const renderCell = useCallback(
     (employee: Employee, columnKey: React.Key) => {
       const cellValue = employee[columnKey as keyof Employee];
 
@@ -153,14 +226,6 @@ export default function List() {
               <p className="text-xs text-gray-500">{employee.email}</p>
             </div>
           );
-        case "department":
-          return <span className="text-gray-700">{employee.department}</span>;
-        case "position":
-          return <span className="text-gray-700">{employee.position}</span>;
-        case "managerId":
-          return (
-            <span className="text-gray-500">{employee.managerId || "—"}</span>
-          );
         case "actions":
           return (
             <div className="relative flex justify-end items-center gap-2">
@@ -171,9 +236,27 @@ export default function List() {
                   </Button>
                 </DropdownTrigger>
                 <DropdownMenu>
-                  <DropdownItem key="view">View</DropdownItem>
-                  <DropdownItem key="edit">Edit</DropdownItem>
-                  <DropdownItem key="delete">Delete</DropdownItem>
+                  <DropdownItem
+                    key="edit"
+                    onPress={() => handleOpenEdit(employee)}
+                  >
+                    Edit
+                  </DropdownItem>
+                  <DropdownItem
+                    key="delete"
+                    className="text-danger"
+                    onPress={async () => {
+                      try {
+                        await deleteEmployee(employee.employeeId);
+                        toast.success("🗑️ Employee deleted");
+                        await fetchEmployees();
+                      } catch (err: any) {
+                        toast.error("Failed to delete employee");
+                      }
+                    }}
+                  >
+                    Delete
+                  </DropdownItem>
                 </DropdownMenu>
               </Dropdown>
             </div>
@@ -182,12 +265,12 @@ export default function List() {
           return cellValue;
       }
     },
-    []
+    [fetchEmployees]
   );
 
-  // Search + Pagination
+  /* ------------------ Top & Bottom Sections ------------------ */
 
-  const onRowsPerPageChange = React.useCallback(
+  const onRowsPerPageChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       setRowsPerPage(Number(e.target.value));
       setPage(1);
@@ -195,7 +278,7 @@ export default function List() {
     []
   );
 
-  const onSearchChange = React.useCallback((value?: string) => {
+  const onSearchChange = useCallback((value?: string) => {
     if (value) {
       setFilterValue(value);
       setPage(1);
@@ -204,8 +287,7 @@ export default function List() {
     }
   }, []);
 
-  // Table Top Section
-  const topContent = React.useMemo(() => {
+  const topContent = useMemo(() => {
     return (
       <div className="flex flex-col gap-4">
         <div className="flex justify-between gap-3 items-end">
@@ -224,31 +306,9 @@ export default function List() {
             onValueChange={onSearchChange}
           />
           <div className="flex gap-3">
-            <Dropdown>
-              <DropdownTrigger className="hidden sm:flex">
-                <Button
-                  endContent={<ChevronDown size={18} className="text-small" />}
-                  size="sm"
-                  variant="flat"
-                >
-                  Columns
-                </Button>
-              </DropdownTrigger>
-              <DropdownMenu
-                disallowEmptySelection
-                aria-label="Table Columns"
-                closeOnSelect={false}
-                selectedKeys={visibleColumns}
-                selectionMode="multiple"
-                onSelectionChange={setVisibleColumns}
-              >
-                {columns.map((column) => (
-                  <DropdownItem key={column.uid} className="capitalize">
-                    {capitalize(column.name)}
-                  </DropdownItem>
-                ))}
-              </DropdownMenu>
-            </Dropdown>
+            <Button color="success" onPress={handleOpenAdd}>
+              + Add Employee
+            </Button>
           </div>
         </div>
         <div className="flex justify-between items-center">
@@ -258,7 +318,7 @@ export default function List() {
           <label className="flex items-center text-default-400 text-small">
             Rows per page:
             <select
-              className="bg-transparent outline-none text-default-400 text-small"
+              className="bg-transparent outline-none text-default-400 text-small ml-1"
               onChange={onRowsPerPageChange}
             >
               <option value="5">5</option>
@@ -269,16 +329,9 @@ export default function List() {
         </div>
       </div>
     );
-  }, [
-    filterValue,
-    visibleColumns,
-    onSearchChange,
-    onRowsPerPageChange,
-    employees.length,
-  ]);
+  }, [filterValue, onSearchChange, employees.length, onRowsPerPageChange]);
 
-  // Table Footer
-  const bottomContent = React.useMemo(() => {
+  const bottomContent = useMemo(() => {
     return (
       <div className="py-2 px-2 flex justify-between items-center">
         <Pagination
@@ -302,7 +355,7 @@ export default function List() {
     );
   }, [selectedKeys, items.length, page, pages, hasSearchFilter]);
 
-  const classNames = React.useMemo(
+  const classNames = useMemo(
     () => ({
       wrapper: ["max-h-[382px]", "max-w-6xl"],
       th: ["bg-transparent", "text-default-500", "border-b", "border-divider"],
@@ -311,13 +364,15 @@ export default function List() {
     []
   );
 
-  // LOADING Render
+  /* ------------------ Render ------------------ */
 
-  if (loading) return <p>Loading employees...</p>;
-  if (error) return <p>Error: {error}</p>;
+  if (loading) return;
+  <p>Loading employees...</p>;
+  if (error) return;
+  <p>Error: {error}</p>;
 
   return (
-    <DefaultLayout>
+    <>
       <section>
         <Table
           isCompact
@@ -363,6 +418,106 @@ export default function List() {
           </TableBody>
         </Table>
       </section>
-    </DefaultLayout>
+
+      {/* ------------------ Modal ------------------ */}
+      <Modal isOpen={isOpen} size="3xl" onClose={onClose}>
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                {modalMode === "add" ? "Add Employee" : "Edit Employee"}
+              </ModalHeader>
+              <ModalBody>
+                <Form className="w-full" onSubmit={handleSubmit}>
+                  <div className="flex flex-wrap w-full gap-6">
+                    <Input
+                      name="employeeId"
+                      label="Employee ID"
+                      labelPlacement="outside"
+                      placeholder="e.g. EMP007"
+                      value={selectedEmployee.employeeId ?? ""}
+                      onChange={handleChange}
+                      className="w-[45%]"
+                      isRequired
+                    />
+                    <Input
+                      name="name"
+                      label="Full Name"
+                      labelPlacement="outside"
+                      placeholder="Enter name"
+                      value={selectedEmployee.name ?? ""}
+                      onChange={handleChange}
+                      className="w-[45%]"
+                      isRequired
+                    />
+                    <Input
+                      name="email"
+                      type="email"
+                      label="Email"
+                      labelPlacement="outside"
+                      placeholder="Enter email"
+                      value={selectedEmployee.email ?? ""}
+                      onChange={handleChange}
+                      className="w-[45%]"
+                      isRequired
+                    />
+                    <Input
+                      name="position"
+                      label="Position"
+                      labelPlacement="outside"
+                      placeholder="e.g. SWE, Head of Design"
+                      value={selectedEmployee.position ?? ""}
+                      onChange={handleChange}
+                      className="w-[45%]"
+                      isRequired
+                    />
+                    <Input
+                      name="department"
+                      label="Department"
+                      labelPlacement="outside"
+                      placeholder="e.g. Engineering, Design"
+                      value={selectedEmployee.department ?? ""}
+                      onChange={handleChange}
+                      className="w-[45%]"
+                      isRequired
+                    />
+                    <Input
+                      name="managerId"
+                      label="Manager ID"
+                      labelPlacement="outside"
+                      placeholder="Enter Manager ID"
+                      value={selectedEmployee.managerId ?? ""}
+                      onChange={handleChange}
+                      className="w-[45%]"
+                    />
+                    <Input
+                      name="joinDate"
+                      type="date"
+                      label="Joining Date"
+                      labelPlacement="outside"
+                      value={
+                        selectedEmployee.joinDate
+                          ? selectedEmployee.joinDate.split("T")[0]
+                          : ""
+                      }
+                      onChange={handleChange}
+                      className="w-[45%]"
+                    />
+                  </div>
+                  <div className="mt-6 flex justify-end gap-3">
+                    <Button color="danger" variant="light" onPress={onClose}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" color="primary">
+                      {modalMode === "add" ? "Add" : "Update"}
+                    </Button>
+                  </div>
+                </Form>
+              </ModalBody>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+    </>
   );
 }
