@@ -253,18 +253,18 @@ export default function IndexPage() {
                       className="w-[45%]"
                     />
                   </div>
+                  <ModalFooter>
+                    <div className="mt-6 flex  gap-3">
+                      <Button color="danger" variant="light" onPress={onClose}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" color="primary">
+                        Submit
+                      </Button>
+                    </div>
+                  </ModalFooter>
                 </Form>
               </ModalBody>
-              <ModalFooter>
-                <div className="mt-6 flex justify-end gap-3">
-                  <Button color="danger" variant="light" onPress={onClose}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" color="primary">
-                    Submit
-                  </Button>
-                </div>
-              </ModalFooter>
             </>
           )}
         </ModalContent>

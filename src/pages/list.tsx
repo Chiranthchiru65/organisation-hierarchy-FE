@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 import { SortDescriptor } from "@heroui/table";
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 import {
   Table,
@@ -42,9 +42,9 @@ export type IconSvgProps = SVGProps<SVGSVGElement> & {
   size?: number;
 };
 
-/* ---------------------------------- Columns ---------------------------------- */
+// Column & Filter Configs
 
-const columns = [
+export const columns = [
   { name: "EMPLOYEE ID", uid: "employeeId", sortable: true },
   { name: "NAME", uid: "name", sortable: true },
   { name: "EMAIL", uid: "email" },
@@ -54,24 +54,30 @@ const columns = [
   { name: "ACTIONS", uid: "actions" },
 ];
 
+export function capitalize(s: string) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "";
+}
+
 const INITIAL_VISIBLE_COLUMNS = [
   "employeeId",
   "name",
   "email",
   "position",
   "department",
+  "managerId",
   "actions",
 ];
 
-/* -------------------------------- Component -------------------------------- */
+// component
 
 export default function List() {
-  // ------------------- Data -------------------
+  // API data
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ------------------- UI State -------------------
+  // UI state
+
   const [filterValue, setFilterValue] = useState("");
   const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set([]));
   const [visibleColumns, setVisibleColumns] = useState<Selection>(
@@ -84,7 +90,7 @@ export default function List() {
   });
   const [page, setPage] = useState(1);
 
-  // ------------------- Modal State -------------------
+  // modal state and functions
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [modalMode, setModalMode] = useState<"add" | "edit">("add");
   const [selectedEmployee, setSelectedEmployee] = useState<Partial<Employee>>({
@@ -96,8 +102,9 @@ export default function List() {
     managerId: "",
     joinDate: "",
   });
+  const handleOpen = () => onOpen();
 
-  /* ------------------ Fetch Employees ------------------ */
+  // Fetch Employees
   const fetchEmployees = useCallback(async () => {
     try {
       setLoading(true);
@@ -115,7 +122,7 @@ export default function List() {
     fetchEmployees();
   }, [fetchEmployees]);
 
-  /* ------------------ Modal Helpers ------------------ */
+  // model helper functions
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedEmployee({
@@ -170,8 +177,7 @@ export default function List() {
     }
   };
 
-  /* ------------------ Table Computations ------------------ */
-
+  // Table Logic
   const hasSearchFilter = Boolean(filterValue);
   const pages = Math.ceil(employees.length / rowsPerPage);
 
@@ -182,7 +188,7 @@ export default function List() {
     );
   }, [visibleColumns]);
 
-  // 🔍 Filtering
+  // filtering
   const filteredItems = useMemo(() => {
     let filtered = [...employees];
     if (hasSearchFilter) {
@@ -210,8 +216,7 @@ export default function List() {
     });
   }, [sortDescriptor, items]);
 
-  /* ------------------ Table Rendering ------------------ */
-
+  // render cells || table rendering
   const renderCell = useCallback(
     (employee: Employee, columnKey: React.Key) => {
       const cellValue = employee[columnKey as keyof Employee];
@@ -225,6 +230,14 @@ export default function List() {
               </p>
               <p className="text-xs text-gray-500">{employee.email}</p>
             </div>
+          );
+        case "department":
+          return <span className="text-gray-700">{employee.department}</span>;
+        case "position":
+          return <span className="text-gray-700">{employee.position}</span>;
+        case "managerId":
+          return (
+            <span className="text-gray-500">{employee.managerId || "—"}</span>
           );
         case "actions":
           return (
@@ -248,7 +261,7 @@ export default function List() {
                     onPress={async () => {
                       try {
                         await deleteEmployee(employee.employeeId);
-                        toast.success("🗑️ Employee deleted");
+                        toast.success("Employee deleted");
                         await fetchEmployees();
                       } catch (err: any) {
                         toast.error("Failed to delete employee");
@@ -268,15 +281,15 @@ export default function List() {
     [fetchEmployees]
   );
 
-  /* ------------------ Top & Bottom Sections ------------------ */
+  // Search + Pagination
 
-  const onRowsPerPageChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      setRowsPerPage(Number(e.target.value));
-      setPage(1);
-    },
-    []
-  );
+  // const onRowsPerPageChange = useCallback(
+  //   (e: React.ChangeEvent<HTMLSelectElement>) => {
+  //     setRowsPerPage(Number(e.target.value));
+  //     setPage(1);
+  //   },
+  //   []
+  // );
 
   const onSearchChange = useCallback((value?: string) => {
     if (value) {
@@ -287,6 +300,7 @@ export default function List() {
     }
   }, []);
 
+  // Table Top Section
   const topContent = useMemo(() => {
     return (
       <div className="flex flex-col gap-4">
@@ -306,7 +320,32 @@ export default function List() {
             onValueChange={onSearchChange}
           />
           <div className="flex gap-3">
-            <Button color="success" onPress={handleOpenAdd}>
+            <Dropdown>
+              <DropdownTrigger className="hidden sm:flex">
+                <Button
+                  endContent={<ChevronDown size={18} className="" />}
+                  size="md"
+                  variant="flat"
+                >
+                  Columns
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu
+                disallowEmptySelection
+                aria-label="Table Columns"
+                closeOnSelect={false}
+                selectedKeys={visibleColumns}
+                selectionMode="multiple"
+                onSelectionChange={setVisibleColumns}
+              >
+                {columns.map((column) => (
+                  <DropdownItem key={column.uid} className="capitalize">
+                    {capitalize(column.name)}
+                  </DropdownItem>
+                ))}
+              </DropdownMenu>
+            </Dropdown>
+            <Button size="md" color="success" onPress={handleOpenAdd}>
               + Add Employee
             </Button>
           </div>
@@ -315,22 +354,29 @@ export default function List() {
           <span className="text-default-400 text-small">
             Total {employees.length} employees
           </span>
-          <label className="flex items-center text-default-400 text-small">
+          {/* <label className="flex items-center text-default-400 text-small">
             Rows per page:
             <select
-              className="bg-transparent outline-none text-default-400 text-small ml-1"
+              className="bg-transparent outline-none text-default-400 text-small"
               onChange={onRowsPerPageChange}
             >
               <option value="5">5</option>
               <option value="10">10</option>
               <option value="15">15</option>
             </select>
-          </label>
+          </label> */}
         </div>
       </div>
     );
-  }, [filterValue, onSearchChange, employees.length, onRowsPerPageChange]);
+  }, [
+    filterValue,
+    onSearchChange,
+    employees.length,
+    // onRowsPerPageChange,
+    // visibleColumns,
+  ]);
 
+  // Table Footer
   const bottomContent = useMemo(() => {
     return (
       <div className="py-2 px-2 flex justify-between items-center">
@@ -364,12 +410,10 @@ export default function List() {
     []
   );
 
-  /* ------------------ Render ------------------ */
+  // LOADING Render
 
-  if (loading) return;
-  <p>Loading employees...</p>;
-  if (error) return;
-  <p>Error: {error}</p>;
+  if (loading) return <p>Loading employees...</p>;
+  if (error) return <p>Error: {error}</p>;
 
   return (
     <>
@@ -418,17 +462,15 @@ export default function List() {
           </TableBody>
         </Table>
       </section>
-
-      {/* ------------------ Modal ------------------ */}
       <Modal isOpen={isOpen} size="3xl" onClose={onClose}>
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="flex flex-col gap-1">
-                {modalMode === "add" ? "Add Employee" : "Edit Employee"}
-              </ModalHeader>
-              <ModalBody>
-                <Form className="w-full" onSubmit={handleSubmit}>
+              <Form className="w-full" onSubmit={handleSubmit}>
+                <ModalHeader className="flex flex-col gap-1">
+                  {modalMode === "add" ? "Add Employee" : "Edit Employee"}
+                </ModalHeader>
+                <ModalBody>
                   <div className="flex flex-wrap w-full gap-6">
                     <Input
                       name="employeeId"
@@ -504,16 +546,18 @@ export default function List() {
                       className="w-[45%]"
                     />
                   </div>
+                </ModalBody>
+                <ModalFooter>
                   <div className="mt-6 flex justify-end gap-3">
                     <Button color="danger" variant="light" onPress={onClose}>
                       Cancel
                     </Button>
                     <Button type="submit" color="primary">
-                      {modalMode === "add" ? "Add" : "Update"}
+                      Submit
                     </Button>
                   </div>
-                </Form>
-              </ModalBody>
+                </ModalFooter>
+              </Form>
             </>
           )}
         </ModalContent>
