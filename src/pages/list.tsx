@@ -348,7 +348,7 @@ export default function List() {
 
   return (
     <>
-      <section>
+      <section className="bg-white py-4 px-4 rounded-2xl">
         <Table
           isCompact
           removeWrapper
