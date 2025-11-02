@@ -113,7 +113,7 @@ export default function HierarchyPage() {
           <div className="flex gap-2 ">
             {hierarchyData.map((rootNode, idx) => (
               <button
-                key={rootNode._id}
+                key={crypto.randomUUID()}
                 onClick={() => setActiveTab(idx)}
                 className={`px-6 py-2 rounded-lg font-medium transition-all ${
                   activeTab === idx
