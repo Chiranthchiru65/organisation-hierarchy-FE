@@ -1,20 +1,30 @@
 import { useState, useEffect } from "react";
-import Tree from "react-d3-tree";
+import Tree, { type RawNodeDatum } from "react-d3-tree";
 import { getHierarchy } from "@/services/employeeService";
+import type { HierarchyNode } from "@/types/employee";
+
+type HierarchyTreeNode = RawNodeDatum & {
+  attributes?: {
+    position?: string;
+    department?: string;
+    employeeId?: string;
+  };
+  children?: HierarchyTreeNode[];
+};
 
 // transform data for react-d3-tree
-const transformToD3TreeFormat = (node: any) => ({
+const transformToD3TreeFormat = (node: HierarchyNode): HierarchyTreeNode => ({
   name: node.name,
   attributes: {
     position: node.position,
     department: node.department,
     employeeId: node.employeeId,
   },
-  children: node.children?.map(transformToD3TreeFormat) || [],
+  children: node.children?.map(transformToD3TreeFormat) ?? [],
 });
 
 // custom node component
-const CustomNode = ({ nodeDatum }) => (
+const CustomNode = ({ nodeDatum }: { nodeDatum: HierarchyTreeNode }) => (
   <g>
     <foreignObject width="190" height="90" x="-95" y="-45">
       <div className="w-full h-full flex items-center justify-center p-1">
@@ -35,10 +45,10 @@ const CustomNode = ({ nodeDatum }) => (
 );
 
 export default function HierarchyPage() {
-  const [hierarchyData, setHierarchyData] = useState([]);
+  const [hierarchyData, setHierarchyData] = useState<HierarchyNode[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchHierarchyData = async () => {
@@ -46,10 +56,12 @@ export default function HierarchyPage() {
         setIsLoading(true);
         setError(null);
         const response = await getHierarchy();
-        setHierarchyData(response.data || []);
-      } catch (err: any) {
+        setHierarchyData(response.data ?? []);
+      } catch (err: unknown) {
         console.error("Error fetching hierarchy:", err);
-        setError(err.message || "Failed to load hierarchy data");
+        setError(
+          err instanceof Error ? err.message : "Failed to load hierarchy data"
+        );
       } finally {
         setIsLoading(false);
       }
@@ -61,7 +73,10 @@ export default function HierarchyPage() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-50 to-white">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-green-500 border-t-transparent mb-4"></div>
+          <div
+            className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-green-500 border-t-    
+  transparent mb-4"
+          ></div>
           <div className="text-green-600 text-lg font-medium">
             Loading hierarchy...
           </div>
@@ -99,7 +114,7 @@ export default function HierarchyPage() {
   }
 
   return (
-    <div className="w-full h-screen bg-white">
+    <div className="w-full h-screen bg-white rounded-2xl">
       <div className="p-6">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">
           Organization Hierarchy
@@ -113,7 +128,7 @@ export default function HierarchyPage() {
           <div className="flex gap-2 ">
             {hierarchyData.map((rootNode, idx) => (
               <button
-                key={crypto.randomUUID()}
+                key={rootNode.employeeId ?? `${rootNode.name}-${idx}`}
                 onClick={() => setActiveTab(idx)}
                 className={`px-6 py-2 rounded-lg font-medium transition-all ${
                   activeTab === idx
@@ -146,12 +161,12 @@ export default function HierarchyPage() {
               transitionDuration={500}
             />
             <style>{`
-              .custom-link {
-                stroke: #519269;
-                stroke-width: 2px;
-                fill: none;
-              }
-            `}</style>
+                .custom-link {
+                  stroke: #519269;
+                  stroke-width: 2px;                                                                                
+                  fill: none;                                                                                       
+                }                                                                                                   
+              `}</style>
           </div>
         )}
       </div>
